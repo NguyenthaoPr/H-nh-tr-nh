@@ -4,171 +4,274 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bản đồ hành trình – tiện dụng</title>
+<title>Bản đồ du lịch trực tuyến – Tour của Thảo</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
-  html, body, #map {height:100%; margin:0}
-  .legend{
-    position:fixed; bottom:12px; left:12px; background:#fff; border-radius:10px;
-    box-shadow:0 4px 14px rgba(0,0,0,.15); padding:10px 12px; font:14px/1.3 system-ui,-apple-system,Segoe UI,Roboto;
+  :root{
+    --bg:#ffffff; --fg:#0f172a; --muted:#64748b; --card:#ffffff; --shadow:0 10px 30px rgba(2,6,23,.12);
+    --primary:#0b74ff; --accent:#22c55e; --danger:#ef4444; --border:#e2e8f0;
   }
-  .legend .dot{display:inline-block; width:12px; height:12px; border-radius:50%; margin-right:6px; vertical-align:middle}
+  *{box-sizing:border-box}
+  html, body {height:100%; margin:0; background:var(--bg); color:var(--fg); font:14px/1.45 system-ui, -apple-system, Segoe UI, Roboto}
+  #map {position:absolute; inset:0 0 0 340px}
+  @media (max-width: 900px){
+    #map{inset:64px 0 0 0}
+    .panel{inset:0 0 auto 0; height:64px; display:flex; overflow:auto}
+    .panel header{display:none}
+    .panel .content{display:none}
+  }
   .topbar{
-    position:fixed; top:10px; left:50%; transform:translateX(-50%);
-    background:#fff; border-radius:999px; box-shadow:0 4px 14px rgba(0,0,0,.15);
-    padding:8px 12px; font:14px system-ui,-apple-system,Segoe UI,Roboto;
-    display:flex; gap:8px; align-items:center; z-index:1000
+    position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:1001; display:flex; gap:8px; flex-wrap:wrap
   }
-  .btn{
-    border:0; padding:8px 12px; border-radius:999px; background:#0b74ff; color:#fff;
-    font-weight:600; cursor:pointer
-  }
-  .btn:disabled{opacity:.6; cursor:not-allowed}
-  /* Số thứ tự marker */
-  .num-marker{
-    background:#fff; border:2px solid #1a1a1a; width:28px; height:28px; border-radius:50%;
-    text-align:center; line-height:24px; font:700 14px/24px system-ui,-apple-system,Segoe UI,Roboto;
-    box-shadow:0 2px 6px rgba(0,0,0,.25)
-  }
-  .popup{
-    min-width:220px; font:14px/1.35 system-ui,-apple-system,Segoe UI,Roboto;
-  }
-  .popup h4{margin:.25rem 0 .35rem 0}
-  .popup .meta{opacity:.75; margin-bottom:.25rem}
-  .popup .actions{margin-top:.35rem; display:flex; gap:6px; flex-wrap:wrap}
-  .chip{display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:999px; background:#f4f6fb; font-size:12px}
-  .chip .dot{width:10px;height:10px;border-radius:50%}
+  .btn{border:0; padding:9px 12px; border-radius:999px; background:var(--primary); color:#fff; font-weight:700; box-shadow:var(--shadow); cursor:pointer; white-space:nowrap}
+  .btn.ghost{background:#fff; color:var(--fg); border:1px solid var(--border)}
+  .btn.secondary{background:#6b7280}
+  .panel{position:absolute; inset:0 auto 0 0; width:340px; background:var(--card); z-index:1002; box-shadow:var(--shadow); overflow:auto}
+  .panel header{position:sticky; top:0; background:var(--card); padding:14px; border-bottom:1px solid var(--border); display:grid; gap:10px}
+  .brand{display:flex; align-items:center; justify-content:space-between}
+  .brand h1{margin:0; font-size:16px}
+  .brand small{color:var(--muted)}
+  .search{display:flex; gap:8px}
+  .search input{flex:1; padding:10px 12px; border-radius:10px; border:1px solid var(--border)}
+  .filters{display:flex; gap:6px; flex-wrap:wrap}
+  .chip{display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:999px; background:#f8fafc; border:1px solid var(--border); font-size:12px}
+  .dot{width:10px; height:10px; border-radius:50%}
+  .content{padding:12px}
+  details{margin:8px 0; border:1px solid var(--border); border-radius:12px; overflow:hidden}
+  summary{list-style:none; padding:10px 12px; background:#f8fafc; cursor:pointer; font-weight:800; display:flex; align-items:center; gap:8px}
+  .stop{display:grid; grid-template-columns:auto 1fr auto; gap:8px; align-items:center; padding:10px 12px; border-top:1px dashed #eef2f7}
+  .num{background:#fff; border:2px solid #111; width:26px; height:26px; border-radius:50%; display:grid; place-items:center; font-weight:800}
+  .stop .meta{font-size:12px; color:var(--muted)}
+  .stop .act{display:flex; gap:6px}
+  .legend{position:fixed; bottom:12px; left:12px; background:#fff; border-radius:12px; box-shadow:var(--shadow); padding:10px 12px}
+  .num-marker{background:#fff; border:2px solid #1f2937; width:28px; height:28px; border-radius:50%; text-align:center; line-height:24px; font:800 14px/24px system-ui,-apple-system,Segoe UI,Roboto; box-shadow:0 2px 6px rgba(0,0,0,.25)}
+  .popup{min-width:260px; max-width:300px}
+  .popup h4{margin:.25rem 0 .35rem}
+  .popup .meta{opacity:.75; margin:.15rem 0}
+  .popup img{width:100%; border-radius:10px; margin:.25rem 0; border:1px solid var(--border)}
+  .actions{margin-top:.35rem; display:flex; gap:6px; flex-wrap:wrap}
+  .toggle-left{position:fixed; top:10px; left:10px; z-index:1100}
 </style>
 </head>
 <body>
+<button class="btn ghost toggle-left" id="toggleLeft">☰</button>
 <div id="map"></div>
 
 <div class="topbar">
   <button class="btn" id="locateBtn">📍 Định vị</button>
-  <button class="btn" id="fitBtn">🗺️ Xem toàn tuyến</button>
+  <button class="btn" id="fitBtn">🗺️ Toàn tuyến</button>
+  <button class="btn ghost" id="nearBtn">⭐ Gần tôi nhất</button>
+  <button class="btn secondary" id="gpxBtn">⬇️ GPX</button>
 </div>
+
+<aside class="panel" id="leftPanel">
+  <header>
+    <div class="brand">
+      <h1>Tour của Thảo</h1>
+      <small>“Bản đồ sống – mở ra là thấy đường.”</small>
+    </div>
+    <div class="search">
+      <input id="q" placeholder="Tìm điểm dừng (Lũng Cú, Pác Bó, Bản Dốc…)" />
+      <button class="btn ghost" id="searchBtn">Tìm</button>
+    </div>
+    <div class="filters" id="filters"></div>
+  </header>
+  <div class="content" id="itinerary"></div>
+</aside>
 
 <div class="legend" id="legend"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="data.js"></script>
 <script>
-// ===== DỮ LIỆU HÀNH TRÌNH (theo ngày) =====
-const days = [
-  {day:'Ngày 1', color:'#1e90ff', stops:[
-    {name:'Phường Bàn Thạch - Đà Nẵng', lat:15.975, lng:108.249},
-    {name:'Sân bay Đà Nẵng', lat:16.043, lng:108.199},
-    {name:'Sân bay Nội Bài', lat:21.214, lng:105.802},
-    {name:'Tân Trào - Tuyên Quang', lat:21.957, lng:105.181},
-    {name:'Nghĩa trang liệt sĩ Vị Xuyên', lat:22.827, lng:104.933},
-  ]},
-  {day:'Ngày 2', color:'#2ecc71', stops:[
-    {name:'Cổng Trời Quản Bạ', lat:23.017, lng:105.004},
-    {name:'Cột cờ Lũng Cú', lat:23.364, lng:105.318},
-    {name:'Dinh thự họ Vương', lat:23.282, lng:105.262},
-    {name:'Chợ Đồng Văn', lat:23.283, lng:105.285},
-  ]},
-  {day:'Ngày 3', color:'#e74c3c', stops:[
-    {name:'Sông Nho Quế', lat:23.199, lng:105.305},
-    {name:'Mã Pí Lèng', lat:23.215, lng:105.247},
-    {name:'Mèo Vạc', lat:23.151, lng:105.418},
-    {name:'Hang Pác Bó', lat:22.853, lng:106.362},
-    {name:'Suối Lê Nin', lat:22.857, lng:106.364},
-    {name:'Núi Các Mác', lat:22.858, lng:106.365},
-    {name:'Mộ Kim Đồng', lat:22.725, lng:106.411},
-  ]},
-  {day:'Ngày 4', color:'#9b59b6', stops:[
-    {name:'Thác Bản Dốc', lat:22.856, lng:106.722},
-    {name:'Chợ Tân Thanh', lat:21.888, lng:106.742},
-  ]},
-  {day:'Ngày 5', color:'#f39c12', stops:[
-    {name:'Động Tam Thanh', lat:21.854, lng:106.757},
-  ]},
-];
+if(!window.TOUR_DATA){ alert('Thiếu file data.js!'); }
 
-// ===== KHỞI TẠO BẢN ĐỒ =====
+const { days, categories } = window.TOUR_DATA;
+
+// ===== BẢN ĐỒ =====
 const map = L.map('map').setView([21.5, 105.5], 6);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19, attribution: '&copy; OpenStreetMap'
-}).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution:'&copy; OpenStreetMap'}).addTo(map);
 
-const groups = {};   // L.layerGroup theo từng ngày
-const bounds = [];   // chứa tất cả toạ độ để fitBounds
+const groups = {};     // layer theo ngày
+const bounds = [];     // để fit toàn tuyến
+const markerRefs = []; // {marker, data}
 
-function numIcon(n){
-  return L.divIcon({html:`<div class="num-marker">${n}</div>`, iconSize:[28,28], className:''});
-}
+function numIcon(n){ return L.divIcon({html:'<div class="num-marker">'+n+'</div>', iconSize:[28,28], className:''}); }
 
-// Hàm mở Google Maps dẫn đường đến lat,lng (ưu tiên dùng vị trí thật)
-function openDirections(lat, lng){
+function openGMaps(lat,lng){
   if(navigator.geolocation){
-    navigator.geolocation.getCurrentPosition(pos=>{
-      const {latitude, longitude} = pos.coords;
-      const url = `https://www.google.com/maps/dir/?api=1&origin=${latitude},${longitude}&destination=${lat},${lng}`;
-      window.open(url, '_blank');
-    }, _err=>{
-      const fallback = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&origin=Current+Location`;
-      window.open(fallback, '_blank');
-    }, {timeout:5000});
+    navigator.geolocation.getCurrentPosition(p=>{
+      const o = p.coords.latitude+','+p.coords.longitude;
+      window.open('https://www.google.com/maps/dir/?api=1&origin='+o+'&destination='+lat+','+lng, '_blank');
+    }, _=> window.open('https://www.google.com/maps/dir/?api=1&origin=Current+Location&destination='+lat+','+lng, '_blank'), {timeout:4000});
   }else{
-    window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&origin=Current+Location`, '_blank');
+    window.open('https://www.google.com/maps/dir/?api=1&origin=Current+Location&destination='+lat+','+lng, '_blank');
   }
 }
+function openAppleMaps(lat,lng){ window.open('http://maps.apple.com/?daddr='+lat+','+lng, '_blank'); }
+function shareStop(name, lat, lng){
+  const url='https://www.google.com/maps?q='+lat+','+lng;
+  if(navigator.share){ navigator.share({title:name, text:'Điểm dừng: '+name, url}); }
+  else { prompt('Copy link điểm dừng:', url); }
+}
+function speak(text){
+  try{
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.lang = 'vi-VN'; utt.rate = 1;
+    speechSynthesis.speak(utt);
+  }catch(e){ alert('Thiết bị không hỗ trợ đọc thoại.'); }
+}
 
-// Vẽ từng ngày
-let globalIndex = 1;
-days.forEach(d => {
-  const g = L.layerGroup().addTo(map);
-  groups[d.day] = g;
+// Vẽ bản đồ theo dữ liệu
+let globalIndex=1;
+days.forEach(d=>{
+  const g=L.layerGroup().addTo(map);
+  groups[d.day]=g;
+  const arr=[];
+  d.stops.forEach((s,idx)=>{
+    const m=L.marker([s.lat,s.lng],{icon:numIcon(globalIndex)}).addTo(g);
+    markerRefs.push({marker:m, data:{...s, day:d.day, color:d.color, index:globalIndex}});
+    arr.push([s.lat,s.lng]); bounds.push([s.lat,s.lng]);
 
-  const dayLatLngs = [];
-  d.stops.forEach((s, idx) => {
-    const m = L.marker([s.lat, s.lng], {icon:numIcon(globalIndex++)}).addTo(g);
-    dayLatLngs.push([s.lat, s.lng]);
-    bounds.push([s.lat, s.lng]);
+    const photo = s.photo ? '<img src="'+s.photo+'" alt="'+s.name+'">' : '';
+    const open = s.hours ? '<div class="meta">🕒 '+s.hours+'</div>' : '';
+    const desc = s.desc ? '<div class="meta">'+s.desc+'</div>' : '';
+    const cat  = s.cat ? '<span class="chip"><span class="dot" style="background:#f97316"></span>'+s.cat+'</span>' : '';
 
-    const popup = document.createElement('div');
-    popup.className = 'popup';
-    popup.innerHTML = `
-      <h4>${s.name}</h4>
-      <div class="meta"><span class="chip"><span class="dot" style="background:${d.color}"></span>${d.day}</span> · Điểm #${idx+1}</div>
-      <div class="actions">
-        <button class="btn" onclick="openDirections(${s.lat},${s.lng})">🧭 Mở Google Maps</button>
-        <a class="btn" style="text-decoration:none;background:#6c757d" target="_blank"
-           href="https://www.google.com/maps/search/?api=1&query=${s.lat},${s.lng}">🔎 Xem trên Maps</a>
-      </div>
-    `;
-    m.bindPopup(popup);
+    const el=document.createElement('div');
+    el.className='popup';
+    el.innerHTML=''
+      + '<h4>'+globalIndex+'. '+s.name+'</h4>'
+      + cat
+      + photo
+      + open
+      + desc
+      + '<div class="actions">'
+        + '<button class="btn" onclick="openGMaps('+s.lat+','+s.lng+')">🧭 Google Maps</button>'
+        + '<button class="btn secondary" onclick="openAppleMaps('+s.lat+','+s.lng+')">🍎 Apple Maps</button>'
+        + '<button class="btn ghost" onclick="shareStop(\''+(s.name||'').replace(/'/g,'\\\'')+'\', '+s.lat+', '+s.lng+')">📤 Chia sẻ</button>'
+        + '<button class="btn ghost" onclick="speak(\''+((s.speech||s.desc||s.name)||'').replace(/'/g,'\\\'')+'\')">🎧 Nghe</button>'
+      + '</div>';
+    m.bindPopup(el);
+    globalIndex++;
   });
-
-  // polyline theo ngày
-  L.polyline(dayLatLngs, {color:d.color, weight:3, opacity:0.85}).addTo(g);
+  L.polyline(arr,{color:d.color,weight:3,opacity:.9}).addTo(g);
 });
 
-// Layer control (bật/tắt từng ngày)
 L.control.layers(null, groups, {collapsed:false}).addTo(map);
-
-// Fit toàn tuyến lúc mở
 map.fitBounds(bounds);
 
-// Legend
-const legend = document.getElementById('legend');
-legend.innerHTML = days.map(d => `<div><span class="dot" style="background:${d.color}"></span>${d.day}</div>`).join('');
+document.getElementById('legend').innerHTML = days.map(d=>'<div class="chip"><span class="dot" style="background:'+d.color+'"></span>'+d.day+'</div>').join(' ');
 
-// Nút định vị
-document.getElementById('locateBtn').onclick = () => {
-  if (!navigator.geolocation) { alert('Trình duyệt không hỗ trợ định vị.'); return; }
-  navigator.geolocation.getCurrentPosition(pos => {
-    const {latitude, longitude} = pos.coords;
-    const ll = [latitude, longitude];
-    L.marker(ll, {title:'Vị trí của tôi'}).addTo(map).bindPopup('📍 Vị trí của tôi').openPopup();
-    map.setView(ll, 13);
-  }, err => {
-    alert('Không truy cập được vị trí. Vui lòng bật quyền định vị cho trình duyệt.');
+// ===== PANE ITINERARY + FILTERS =====
+const wrap = document.getElementById('itinerary');
+const cats = categories;
+const filtersDiv = document.getElementById('filters');
+filtersDiv.innerHTML = cats.map(c => '<label class="chip"><input type="checkbox" data-cat="'+c+'" checked> '+c+'</label>').join('');
+
+function applyFilters(){
+  const checked = [...document.querySelectorAll('[data-cat]')].filter(i=>i.checked).map(i=>i.getAttribute('data-cat'));
+  markerRefs.forEach(r=>{
+    const visible = !r.data.cat || checked.includes(r.data.cat);
+    if(visible) { r.marker.addTo(groups[r.data.day]); }
+    else { groups[r.data.day].removeLayer(r.marker); }
   });
+}
+filtersDiv.addEventListener('change', applyFilters);
+
+wrap.innerHTML = days.map(d=>{
+  const inner = d.stops.map((s)=>{
+    const idx = markerRefs.find(r=>r.data.name===s.name && r.data.day===d.day).data.index;
+    const cat = s.cat ? '<span class="chip">'+s.cat+'</span>' : '';
+    return '<div class="stop">'
+      + '<span class="num">'+idx+'</span>'
+      + '<div><div><b>'+s.name+'</b></div><div class="meta">'+d.day+' '+cat+'</div></div>'
+      + '<div class="act">'
+        + '<button class="btn ghost" onclick="flyToStop('+idx+')">Xem</button>'
+        + '<button class="btn" onclick="openGMaps('+s.lat+','+s.lng+')">🧭</button>'
+      + '</div>'
+    + '</div>';
+  }).join('');
+  return '<details open><summary><span class="chip"><span class="dot" style="background:'+d.color+'"></span>'+d.day+'</span></summary>'+inner+'</details>';
+}).join('');
+
+window.flyToStop = function(idx){
+  const it = markerRefs.find(r=>r.data.index===idx);
+  if(!it) return;
+  map.setView(it.marker.getLatLng(), 12, {animate:true});
+  it.marker.openPopup();
 };
 
-// Nút xem toàn tuyến
-document.getElementById('fitBtn').onclick = () => map.fitBounds(bounds);
+// ===== TOOLS =====
+document.getElementById('locateBtn').onclick = ()=>{
+  if(!navigator.geolocation){ alert('Thiết bị không hỗ trợ định vị.'); return; }
+  navigator.geolocation.getCurrentPosition(p=>{
+    const ll=[p.coords.latitude,p.coords.longitude];
+    L.marker(ll).addTo(map).bindPopup('📍 Vị trí của tôi').openPopup();
+    map.setView(ll,13);
+  }, _=> alert('Không lấy được vị trí. Hãy bật quyền định vị cho trình duyệt.'), {timeout:4000});
+};
+document.getElementById('fitBtn').onclick = ()=> map.fitBounds(bounds);
+
+// Gần nhất
+function hav(a,b){ const toRad=x=>x*Math.PI/180; const R=6371;
+  const dLat=toRad(b[0]-a[0]), dLng=toRad(b[1]-a[1]);
+  const s1=Math.sin(dLat/2)**2 + Math.cos(toRad(a[0]))*Math.cos(toRad(b[0]))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s1));
+}
+document.getElementById('nearBtn').onclick = ()=>{
+  if(!navigator.geolocation){ alert('Thiết bị không hỗ trợ định vị.'); return; }
+  navigator.geolocation.getCurrentPosition(p=>{
+    const me=[p.coords.latitude,p.coords.longitude];
+    let best=null;
+    markerRefs.forEach(r=>{
+      const d=hav(me,[r.marker.getLatLng().lat,r.marker.getLatLng().lng]);
+      if(!best || d<best.d) best={ref:r, d};
+    });
+    if(best){
+      map.setView(best.ref.marker.getLatLng(), 12);
+      best.ref.marker.openPopup();
+      alert('Điểm gần nhất cách khoảng ~'+best.d.toFixed(1)+' km');
+    }
+  }, _=> alert('Không lấy được vị trí để tìm điểm gần nhất.'), {timeout:4000});
+};
+
+// Search
+document.getElementById('searchBtn').onclick = ()=>{
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  if(!q){ alert('Nhập tên điểm cần tìm, ví dụ: Lũng Cú'); return; }
+  const found = markerRefs.find(r => r.data.name.toLowerCase().includes(q));
+  if(found){ flyToStop(found.data.index); } else { alert('Không tìm thấy. Thử gõ từ khoá khác.'); }
+};
+
+// GPX
+function toGPX(){
+  const seg = markerRefs.map(r=>'<trkpt lat="'+r.marker.getLatLng().lat+'" lon="'+r.marker.getLatLng().lng+'"></trkpt>').join('\n');
+  return '<?xml version="1.0" encoding="UTF-8"?>\n'
+    + '<gpx version="1.1" creator="Thao Trip" xmlns="http://www.topografix.com/GPX/1/1">\n'
+    + '  <trk><name>Hanh trinh cua Thao</name><trkseg>'+seg+'</trkseg></trk>\n'
+    + '</gpx>';
+}
+document.getElementById('gpxBtn').onclick = ()=>{
+  const blob = new Blob([toGPX()], {type:'application/gpx+xml'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'hanh_trinh_thao.gpx';
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+// Toggle left panel
+const panel = document.getElementById('leftPanel');
+document.getElementById('toggleLeft').onclick = ()=>{
+  if(getComputedStyle(panel).width==='0px'){
+    panel.style.width='340px';
+    document.getElementById('map').style.inset='0 0 0 340px';
+  }else{
+    panel.style.width='0px';
+    document.getElementById('map').style.inset='0 0 0 0';
+  }
+};
 </script>
 </body>
 </html>
