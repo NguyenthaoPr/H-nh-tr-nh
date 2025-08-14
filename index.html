@@ -1,725 +1,174 @@
+
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
-    
-    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
-    
-        <script>
-            L_NO_TOUCH = false;
-            L_DISABLE_3D = false;
-        </script>
-    
-    <style>html, body {width: 100%;height: 100%;margin: 0;padding: 0;}</style>
-    <style>#map {position:absolute;top:0;bottom:0;right:0;left:0;}</style>
-    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.6.0/dist/leaflet.js"></script>
-    <script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.6.0/dist/leaflet.css"/>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css"/>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css"/>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css"/>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
-    
-            <meta name="viewport" content="width=device-width,
-                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-            <style>
-                #map_00fa89b8ea0ef1d4683a8ec58018b667 {
-                    position: relative;
-                    width: 100.0%;
-                    height: 100.0%;
-                    left: 0.0%;
-                    top: 0.0%;
-                }
-            </style>
-        
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bản đồ hành trình – tiện dụng</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  html, body, #map {height:100%; margin:0}
+  .legend{
+    position:fixed; bottom:12px; left:12px; background:#fff; border-radius:10px;
+    box-shadow:0 4px 14px rgba(0,0,0,.15); padding:10px 12px; font:14px/1.3 system-ui,-apple-system,Segoe UI,Roboto;
+  }
+  .legend .dot{display:inline-block; width:12px; height:12px; border-radius:50%; margin-right:6px; vertical-align:middle}
+  .topbar{
+    position:fixed; top:10px; left:50%; transform:translateX(-50%);
+    background:#fff; border-radius:999px; box-shadow:0 4px 14px rgba(0,0,0,.15);
+    padding:8px 12px; font:14px system-ui,-apple-system,Segoe UI,Roboto;
+    display:flex; gap:8px; align-items:center; z-index:1000
+  }
+  .btn{
+    border:0; padding:8px 12px; border-radius:999px; background:#0b74ff; color:#fff;
+    font-weight:600; cursor:pointer
+  }
+  .btn:disabled{opacity:.6; cursor:not-allowed}
+  /* Số thứ tự marker */
+  .num-marker{
+    background:#fff; border:2px solid #1a1a1a; width:28px; height:28px; border-radius:50%;
+    text-align:center; line-height:24px; font:700 14px/24px system-ui,-apple-system,Segoe UI,Roboto;
+    box-shadow:0 2px 6px rgba(0,0,0,.25)
+  }
+  .popup{
+    min-width:220px; font:14px/1.35 system-ui,-apple-system,Segoe UI,Roboto;
+  }
+  .popup h4{margin:.25rem 0 .35rem 0}
+  .popup .meta{opacity:.75; margin-bottom:.25rem}
+  .popup .actions{margin-top:.35rem; display:flex; gap:6px; flex-wrap:wrap}
+  .chip{display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:999px; background:#f4f6fb; font-size:12px}
+  .chip .dot{width:10px;height:10px;border-radius:50%}
+</style>
 </head>
 <body>
-    
-    
-            <div class="folium-map" id="map_00fa89b8ea0ef1d4683a8ec58018b667" ></div>
-        
-</body>
+<div id="map"></div>
+
+<div class="topbar">
+  <button class="btn" id="locateBtn">📍 Định vị</button>
+  <button class="btn" id="fitBtn">🗺️ Xem toàn tuyến</button>
+</div>
+
+<div class="legend" id="legend"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    
-    
-            var map_00fa89b8ea0ef1d4683a8ec58018b667 = L.map(
-                "map_00fa89b8ea0ef1d4683a8ec58018b667",
-                {
-                    center: [16.047079, 108.20623],
-                    crs: L.CRS.EPSG3857,
-                    zoom: 5,
-                    zoomControl: true,
-                    preferCanvas: false,
-                }
-            );
+// ===== DỮ LIỆU HÀNH TRÌNH (theo ngày) =====
+const days = [
+  {day:'Ngày 1', color:'#1e90ff', stops:[
+    {name:'Phường Bàn Thạch - Đà Nẵng', lat:15.975, lng:108.249},
+    {name:'Sân bay Đà Nẵng', lat:16.043, lng:108.199},
+    {name:'Sân bay Nội Bài', lat:21.214, lng:105.802},
+    {name:'Tân Trào - Tuyên Quang', lat:21.957, lng:105.181},
+    {name:'Nghĩa trang liệt sĩ Vị Xuyên', lat:22.827, lng:104.933},
+  ]},
+  {day:'Ngày 2', color:'#2ecc71', stops:[
+    {name:'Cổng Trời Quản Bạ', lat:23.017, lng:105.004},
+    {name:'Cột cờ Lũng Cú', lat:23.364, lng:105.318},
+    {name:'Dinh thự họ Vương', lat:23.282, lng:105.262},
+    {name:'Chợ Đồng Văn', lat:23.283, lng:105.285},
+  ]},
+  {day:'Ngày 3', color:'#e74c3c', stops:[
+    {name:'Sông Nho Quế', lat:23.199, lng:105.305},
+    {name:'Mã Pí Lèng', lat:23.215, lng:105.247},
+    {name:'Mèo Vạc', lat:23.151, lng:105.418},
+    {name:'Hang Pác Bó', lat:22.853, lng:106.362},
+    {name:'Suối Lê Nin', lat:22.857, lng:106.364},
+    {name:'Núi Các Mác', lat:22.858, lng:106.365},
+    {name:'Mộ Kim Đồng', lat:22.725, lng:106.411},
+  ]},
+  {day:'Ngày 4', color:'#9b59b6', stops:[
+    {name:'Thác Bản Dốc', lat:22.856, lng:106.722},
+    {name:'Chợ Tân Thanh', lat:21.888, lng:106.742},
+  ]},
+  {day:'Ngày 5', color:'#f39c12', stops:[
+    {name:'Động Tam Thanh', lat:21.854, lng:106.757},
+  ]},
+];
 
-            
+// ===== KHỞI TẠO BẢN ĐỒ =====
+const map = L.map('map').setView([21.5, 105.5], 6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19, attribution: '&copy; OpenStreetMap'
+}).addTo(map);
 
-        
-    
-            var tile_layer_1c6bd8c9468f9a3a2cc2d3da6b6611b1 = L.tileLayer(
-                "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                {"attribution": "Data by \u0026copy; \u003ca href=\"http://openstreetmap.org\"\u003eOpenStreetMap\u003c/a\u003e, under \u003ca href=\"http://www.openstreetmap.org/copyright\"\u003eODbL\u003c/a\u003e.", "detectRetina": false, "maxNativeZoom": 18, "maxZoom": 18, "minZoom": 0, "noWrap": false, "opacity": 1, "subdomains": "abc", "tms": false}
-            ).addTo(map_00fa89b8ea0ef1d4683a8ec58018b667);
-        
-    
-            var marker_2bdaa83717eb34cbe2dca8bc3f98a248 = L.marker(
-                [15.975, 108.249],
-                {}
-            ).addTo(map_00fa89b8ea0ef1d4683a8ec58018b667);
-        
-    
-            var icon_6371ba661f565d4ae4c45adb5ad7db62 = L.AwesomeMarkers.icon(
-                {"extraClasses": "fa-rotate-0", "icon": "info-sign", "iconColor": "white", "markerColor": "blue", "prefix": "glyphicon"}
-            );
-            marker_2bdaa83717eb34cbe2dca8bc3f98a248.setIcon(icon_6371ba661f565d4ae4c45adb5ad7db62);
-        
-    
-        var popup_40eb7f843c02d74414d0cf5ef7cc665d = L.popup({"maxWidth": "100%"});
+const groups = {};   // L.layerGroup theo từng ngày
+const bounds = [];   // chứa tất cả toạ độ để fitBounds
 
-        
-            var html_32d76fdc0a4262465eb689606ff81e71 = $(`<div id="html_32d76fdc0a4262465eb689606ff81e71" style="width: 100.0%; height: 100.0%;">Ngày 1: Phường Bàn Thạch - Đà Nẵng</div>`)[0];
-            popup_40eb7f843c02d74414d0cf5ef7cc665d.setContent(html_32d76fdc0a4262465eb689606ff81e71);
-        
+function numIcon(n){
+  return L.divIcon({html:`<div class="num-marker">${n}</div>`, iconSize:[28,28], className:''});
+}
 
-        marker_2bdaa83717eb34cbe2dca8bc3f98a248.bindPopup(popup_40eb7f843c02d74414d0cf5ef7cc665d)
-        ;
+// Hàm mở Google Maps dẫn đường đến lat,lng (ưu tiên dùng vị trí thật)
+function openDirections(lat, lng){
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(pos=>{
+      const {latitude, longitude} = pos.coords;
+      const url = `https://www.google.com/maps/dir/?api=1&origin=${latitude},${longitude}&destination=${lat},${lng}`;
+      window.open(url, '_blank');
+    }, _err=>{
+      const fallback = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&origin=Current+Location`;
+      window.open(fallback, '_blank');
+    }, {timeout:5000});
+  }else{
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&origin=Current+Location`, '_blank');
+  }
+}
 
-        
-    
-    
-            marker_2bdaa83717eb34cbe2dca8bc3f98a248.bindTooltip(
-                `<div>
-                     Ngày 1 - Phường Bàn Thạch - Đà Nẵng
-                 </div>`,
-                {"sticky": true}
-            );
-        
-    
-            var marker_b17805c1f9ff3db2bd53605664a4751d = L.marker(
-                [16.043, 108.199],
-                {}
-            ).addTo(map_00fa89b8ea0ef1d4683a8ec58018b667);
-        
-    
-            var icon_c144a5a5584eee04e24b0fe5d6d3ead7 = L.AwesomeMarkers.icon(
-                {"extraClasses": "fa-rotate-0", "icon": "info-sign", "iconColor": "white", "markerColor": "blue", "prefix": "glyphicon"}
-            );
-            marker_b17805c1f9ff3db2bd53605664a4751d.setIcon(icon_c144a5a5584eee04e24b0fe5d6d3ead7);
-        
-    
-        var popup_f40b532599c47a19e29970c4f9de4ae0 = L.popup({"maxWidth": "100%"});
+// Vẽ từng ngày
+let globalIndex = 1;
+days.forEach(d => {
+  const g = L.layerGroup().addTo(map);
+  groups[d.day] = g;
 
-        
-            var html_a4e30ff13b5781c9956e2a0918315310 = $(`<div id="html_a4e30ff13b5781c9956e2a0918315310" style="width: 100.0%; height: 100.0%;">Ngày 1: Sân bay Đà Nẵng</div>`)[0];
-            popup_f40b532599c47a19e29970c4f9de4ae0.setContent(html_a4e30ff13b5781c9956e2a0918315310);
-        
+  const dayLatLngs = [];
+  d.stops.forEach((s, idx) => {
+    const m = L.marker([s.lat, s.lng], {icon:numIcon(globalIndex++)}).addTo(g);
+    dayLatLngs.push([s.lat, s.lng]);
+    bounds.push([s.lat, s.lng]);
 
-        marker_b17805c1f9ff3db2bd53605664a4751d.bindPopup(popup_f40b532599c47a19e29970c4f9de4ae0)
-        ;
+    const popup = document.createElement('div');
+    popup.className = 'popup';
+    popup.innerHTML = `
+      <h4>${s.name}</h4>
+      <div class="meta"><span class="chip"><span class="dot" style="background:${d.color}"></span>${d.day}</span> · Điểm #${idx+1}</div>
+      <div class="actions">
+        <button class="btn" onclick="openDirections(${s.lat},${s.lng})">🧭 Mở Google Maps</button>
+        <a class="btn" style="text-decoration:none;background:#6c757d" target="_blank"
+           href="https://www.google.com/maps/search/?api=1&query=${s.lat},${s.lng}">🔎 Xem trên Maps</a>
+      </div>
+    `;
+    m.bindPopup(popup);
+  });
 
-        
-    
-    
-            marker_b17805c1f9ff3db2bd53605664a4751d.bindTooltip(
-                `<div>
-                     Ngày 1 - Sân bay Đà Nẵng
-                 </div>`,
-                {"sticky": true}
-            );
-        
-    
-            var marker_73c25dab21a0aac803677a4be8f4c613 = L.marker(
-                [21.214, 105.802],
-                {}
-            ).addTo(map_00fa89b8ea0ef1d4683a8ec58018b667);
-        
-    
-            var icon_723f1fbd5c1f590269270d49f0dc3843 = L.AwesomeMarkers.icon(
-                {"extraClasses": "fa-rotate-0", "icon": "info-sign", "iconColor": "white", "markerColor": "blue", "prefix": "glyphicon"}
-            );
-            marker_73c25dab21a0aac803677a4be8f4c613.setIcon(icon_723f1fbd5c1f590269270d49f0dc3843);
-        
-    
-        var popup_5c7a81f0f36ae2d524f9e56fbccca50a = L.popup({"maxWidth": "100%"});
+  // polyline theo ngày
+  L.polyline(dayLatLngs, {color:d.color, weight:3, opacity:0.85}).addTo(g);
+});
 
-        
-            var html_30e7f98fc3370359750727f5b4b622ff = $(`<div id="html_30e7f98fc3370359750727f5b4b622ff" style="width: 100.0%; height: 100.0%;">Ngày 1: Sân bay Nội Bài</div>`)[0];
-            popup_5c7a81f0f36ae2d524f9e56fbccca50a.setContent(html_30e7f98fc3370359750727f5b4b622ff);
-        
+// Layer control (bật/tắt từng ngày)
+L.control.layers(null, groups, {collapsed:false}).addTo(map);
 
-        marker_73c25dab21a0aac803677a4be8f4c613.bindPopup(popup_5c7a81f0f36ae2d524f9e56fbccca50a)
-        ;
+// Fit toàn tuyến lúc mở
+map.fitBounds(bounds);
 
-        
-    
-    
-            marker_73c25dab21a0aac803677a4be8f4c613.bindTooltip(
-                `<div>
-                     Ngày 1 - Sân bay Nội Bài
-                 </div>`,
-                {"sticky": true}
-            );
-        
-    
-            var marker_f7ae66d0e416d14d1156cdc542e99920 = L.marker(
-                [21.957, 105.181],
-                {}
-            ).addTo(map_00fa89b8ea0ef1d4683a8ec58018b667);
-        
-    
-            var icon_6336ee814ed303d3ce317a69491dd27d = L.AwesomeMarkers.icon(
-                {"extraClasses": "fa-rotate-0", "icon": "info-sign", "iconColor": "white", "markerColor": "blue", "prefix": "glyphicon"}
-            );
-            marker_f7ae66d0e416d14d1156cdc542e99920.setIcon(icon_6336ee814ed303d3ce317a69491dd27d);
-        
-    
-        var popup_8f6e91d6dd4dc49ab931c6b71c71554a = L.popup({"maxWidth": "100%"});
+// Legend
+const legend = document.getElementById('legend');
+legend.innerHTML = days.map(d => `<div><span class="dot" style="background:${d.color}"></span>${d.day}</div>`).join('');
 
-        
-            var html_69562518f024cc4228fb2d8c054e1243 = $(`<div id="html_69562518f024cc4228fb2d8c054e1243" style="width: 100.0%; height: 100.0%;">Ngày 1: Tân Trào - Tuyên Quang</div>`)[0];
-            popup_8f6e91d6dd4dc49ab931c6b71c71554a.setContent(html_69562518f024cc4228fb2d8c054e1243);
-        
+// Nút định vị
+document.getElementById('locateBtn').onclick = () => {
+  if (!navigator.geolocation) { alert('Trình duyệt không hỗ trợ định vị.'); return; }
+  navigator.geolocation.getCurrentPosition(pos => {
+    const {latitude, longitude} = pos.coords;
+    const ll = [latitude, longitude];
+    L.marker(ll, {title:'Vị trí của tôi'}).addTo(map).bindPopup('📍 Vị trí của tôi').openPopup();
+    map.setView(ll, 13);
+  }, err => {
+    alert('Không truy cập được vị trí. Vui lòng bật quyền định vị cho trình duyệt.');
+  });
+};
 
-        marker_f7ae66d0e416d14d1156cdc542e99920.bindPopup(popup_8f6e91d6dd4dc49ab931c6b71c71554a)
-        ;
-
-        
-    
-    
-            marker_f7ae66d0e416d14d1156cdc542e99920.bindTooltip(
-                `<div>
-                     Ngày 1 - Tân Trào - Tuyên Quang
-                 </div>`,
-                {"sticky": true}
-            );
-        
-    
-            var marker_794d9c12ffcb93fbefd3397913f748df = L.marker(
-                [22.827, 104.933],
-                {}
-            ).addTo(map_00fa89b8ea0ef1d4683a8ec58018b667);
-        
-    
-            var icon_36b16b6b7d26b64be3eb47785d4b765d = L.AwesomeMarkers.icon(
-                {"extraClasses": "fa-rotate-0", "icon": "info-sign", "iconColor": "white", "markerColor": "blue", "prefix": "glyphicon"}
-            );
-            marker_794d9c12ffcb93fbefd3397913f748df.setIcon(icon_36b16b6b7d26b64be3eb47785d4b765d);
-        
-    
-        var popup_bfab204fa1f4a43449e425792b3efa3d = L.popup({"maxWidth": "100%"});
-
-        
-            var html_7f871a33bd28426bc53b171a5e9630dd = $(`<div id="html_7f871a33bd28426bc53b171a5e9630dd" style="width: 100.0%; height: 100.0%;">Ngày 1: Nghĩa trang liệt sĩ Vị Xuyên</div>`)[0];
-            popup_bfab204fa1f4a43449e425792b3efa3d.setContent(html_7f871a33bd28426bc53b171a5e9630dd);
-        
-
-        marker_794d9c12ffcb93fbefd3397913f748df.bindPopup(popup_bfab204fa1f4a43449e425792b3efa3d)
-        ;
-
-        
-    
-    
-            marker_794d9c12ffcb93fbefd3397913f748df.bindTooltip(
-                `<div>
-                     Ngày 1 - Nghĩa trang liệt sĩ Vị Xuyên
-                 </div>`,
-                {"sticky": true}
-            );
-        
-    
-            var poly_line_98f0e616f8cd4aa59402ddf90c334715 = L.polyline(
-                [[15.975, 108.249], [16.043, 108.199], [21.214, 105.802], [21.957, 105.181], [22.827, 104.933]],
-                {"bubblingMouseEvents": true, "color": "blue", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "blue", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.7, "smoothFactor": 1.0, "stroke": true, "weight": 3}
-            ).addTo(map_00fa89b8ea0ef1d4683a8ec58018b667);
-        
-    
-            var marker_cdfcb6c39206e1114f503edbfc165455 = L.marker(
-                [23.017, 105.004],
-                {}
-            ).addTo(map_00fa89b8ea0ef1d4683a8ec58018b667);
-        
-    
-            var icon_f76baae403b5892f1fed32158fb3d764 = L.AwesomeMarkers.icon(
-                {"extraClasses": "fa-rotate-0", "icon": "info-sign", "iconColor": "white", "markerColor": "green", "prefix": "glyphicon"}
-            );
-            marker_cdfcb6c39206e1114f503edbfc165455.setIcon(icon_f76baae403b5892f1fed32158fb3d764);
-        
-    
-        var popup_2e3bfd57c623dc4ff8dcb4a0b74d2a1d = L.popup({"maxWidth": "100%"});
-
-        
-            var html_0e8ae414617204e90dc82421d11a0c9a = $(`<div id="html_0e8ae414617204e90dc82421d11a0c9a" style="width: 100.0%; height: 100.0%;">Ngày 2: Cổng Trời Quản Bạ</div>`)[0];
-            popup_2e3bfd57c623dc4ff8dcb4a0b74d2a1d.setContent(html_0e8ae414617204e90dc82421d11a0c9a);
-        
-
-        marker_cdfcb6c39206e1114f503edbfc165455.bindPopup(popup_2e3bfd57c623dc4ff8dcb4a0b74d2a1d)
-        ;
-
-        
-    
-    
-            marker_cdfcb6c39206e1114f503edbfc165455.bindTooltip(
-                `<div>
-                     Ngày 2 - Cổng Trời Quản Bạ
-                 </div>`,
-                {"sticky": true}
-            );
-        
-    
-            var marker_d02b92987ef85b5779b33cfb759ba708 = L.marker(
-                [23.364, 105.318],
-                {}
-            ).addTo(map_00fa89b8ea0ef1d4683a8ec58018b667);
-        
-    
-            var icon_821d7d3095caf779508f38b5e14bf5d0 = L.AwesomeMarkers.icon(
-                {"extraClasses": "fa-rotate-0", "icon": "info-sign", "iconColor": "white", "markerColor": "green", "prefix": "glyphicon"}
-            );
-            marker_d02b92987ef85b5779b33cfb759ba708.setIcon(icon_821d7d3095caf779508f38b5e14bf5d0);
-        
-    
-        var popup_6ddde5572b52b9a731fd3428420232f2 = L.popup({"maxWidth": "100%"});
-
-        
-            var html_5169e33f4b16e1f570886cce6222c5e9 = $(`<div id="html_5169e33f4b16e1f570886cce6222c5e9" style="width: 100.0%; height: 100.0%;">Ngày 2: Cột cờ Lũng Cú</div>`)[0];
-            popup_6ddde5572b52b9a731fd3428420232f2.setContent(html_5169e33f4b16e1f570886cce6222c5e9);
-        
-
-        marker_d02b92987ef85b5779b33cfb759ba708.bindPopup(popup_6ddde5572b52b9a731fd3428420232f2)
-        ;
-
-        
-    
-    
-            marker_d02b92987ef85b5779b33cfb759ba708.bindTooltip(
-                `<div>
-                     Ngày 2 - Cột cờ Lũng Cú
-                 </div>`,
-                {"sticky": true}
-            );
-        
-    
-            var marker_2765d50fca34f62d33d084e9b773429a = L.marker(
-                [23.282, 105.262],
-                {}
-            ).addTo(map_00fa89b8ea0ef1d4683a8ec58018b667);
-        
-    
-            var icon_346fb07ac1afc6de2b5528d608d6ef34 = L.AwesomeMarkers.icon(
-                {"extraClasses": "fa-rotate-0", "icon": "info-sign", "iconColor": "white", "markerColor": "green", "prefix": "glyphicon"}
-            );
-            marker_2765d50fca34f62d33d084e9b773429a.setIcon(icon_346fb07ac1afc6de2b5528d608d6ef34);
-        
-    
-        var popup_58c7a028d28c2f26b42645979a62d639 = L.popup({"maxWidth": "100%"});
-
-        
-            var html_64e1c0949e2c5675bc8571c946b841de = $(`<div id="html_64e1c0949e2c5675bc8571c946b841de" style="width: 100.0%; height: 100.0%;">Ngày 2: Dinh thự họ Vương</div>`)[0];
-            popup_58c7a028d28c2f26b42645979a62d639.setContent(html_64e1c0949e2c5675bc8571c946b841de);
-        
-
-        marker_2765d50fca34f62d33d084e9b773429a.bindPopup(popup_58c7a028d28c2f26b42645979a62d639)
-        ;
-
-        
-    
-    
-            marker_2765d50fca34f62d33d084e9b773429a.bindTooltip(
-                `<div>
-                     Ngày 2 - Dinh thự họ Vương
-                 </div>`,
-                {"sticky": true}
-            );
-        
-    
-            var marker_5de823e1c262ecd2528239b61381f417 = L.marker(
-                [23.283, 105.285],
-                {}
-            ).addTo(map_00fa89b8ea0ef1d4683a8ec58018b667);
-        
-    
-            var icon_a0bf2f986a6fce868c5eb10ad32794b7 = L.AwesomeMarkers.icon(
-                {"extraClasses": "fa-rotate-0", "icon": "info-sign", "iconColor": "white", "markerColor": "green", "prefix": "glyphicon"}
-            );
-            marker_5de823e1c262ecd2528239b61381f417.setIcon(icon_a0bf2f986a6fce868c5eb10ad32794b7);
-        
-    
-        var popup_29123b09d57b5f7138903af129239a78 = L.popup({"maxWidth": "100%"});
-
-        
-            var html_8b7911704f5658e40b9d176590ecf5a7 = $(`<div id="html_8b7911704f5658e40b9d176590ecf5a7" style="width: 100.0%; height: 100.0%;">Ngày 2: Chợ Đồng Văn</div>`)[0];
-            popup_29123b09d57b5f7138903af129239a78.setContent(html_8b7911704f5658e40b9d176590ecf5a7);
-        
-
-        marker_5de823e1c262ecd2528239b61381f417.bindPopup(popup_29123b09d57b5f7138903af129239a78)
-        ;
-
-        
-    
-    
-            marker_5de823e1c262ecd2528239b61381f417.bindTooltip(
-                `<div>
-                     Ngày 2 - Chợ Đồng Văn
-                 </div>`,
-                {"sticky": true}
-            );
-        
-    
-            var poly_line_111d912b42a5cd930f3c8c653e05a7a5 = L.polyline(
-                [[23.017, 105.004], [23.364, 105.318], [23.282, 105.262], [23.283, 105.285]],
-                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "green", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.7, "smoothFactor": 1.0, "stroke": true, "weight": 3}
-            ).addTo(map_00fa89b8ea0ef1d4683a8ec58018b667);
-        
-    
-            var marker_49af9663196fa410748447a974427ed5 = L.marker(
-                [23.199, 105.305],
-                {}
-            ).addTo(map_00fa89b8ea0ef1d4683a8ec58018b667);
-        
-    
-            var icon_7ba56f48c63449a603871c619b92a327 = L.AwesomeMarkers.icon(
-                {"extraClasses": "fa-rotate-0", "icon": "info-sign", "iconColor": "white", "markerColor": "red", "prefix": "glyphicon"}
-            );
-            marker_49af9663196fa410748447a974427ed5.setIcon(icon_7ba56f48c63449a603871c619b92a327);
-        
-    
-        var popup_47fe8e966b14115fec90aafa65d397ab = L.popup({"maxWidth": "100%"});
-
-        
-            var html_8e2548272cefcbb2e153f94a101e7305 = $(`<div id="html_8e2548272cefcbb2e153f94a101e7305" style="width: 100.0%; height: 100.0%;">Ngày 3: Sông Nho Quế</div>`)[0];
-            popup_47fe8e966b14115fec90aafa65d397ab.setContent(html_8e2548272cefcbb2e153f94a101e7305);
-        
-
-        marker_49af9663196fa410748447a974427ed5.bindPopup(popup_47fe8e966b14115fec90aafa65d397ab)
-        ;
-
-        
-    
-    
-            marker_49af9663196fa410748447a974427ed5.bindTooltip(
-                `<div>
-                     Ngày 3 - Sông Nho Quế
-                 </div>`,
-                {"sticky": true}
-            );
-        
-    
-            var marker_a900e2c402923a0369484effcf9b372b = L.marker(
-                [23.215, 105.247],
-                {}
-            ).addTo(map_00fa89b8ea0ef1d4683a8ec58018b667);
-        
-    
-            var icon_37f7853d84e5078cccebfdf66dd5e75d = L.AwesomeMarkers.icon(
-                {"extraClasses": "fa-rotate-0", "icon": "info-sign", "iconColor": "white", "markerColor": "red", "prefix": "glyphicon"}
-            );
-            marker_a900e2c402923a0369484effcf9b372b.setIcon(icon_37f7853d84e5078cccebfdf66dd5e75d);
-        
-    
-        var popup_05643b0a5969447fd09e843b847c43c0 = L.popup({"maxWidth": "100%"});
-
-        
-            var html_cf0b44a4e554119e2b8f44b342280415 = $(`<div id="html_cf0b44a4e554119e2b8f44b342280415" style="width: 100.0%; height: 100.0%;">Ngày 3: Mã Pí Lèng</div>`)[0];
-            popup_05643b0a5969447fd09e843b847c43c0.setContent(html_cf0b44a4e554119e2b8f44b342280415);
-        
-
-        marker_a900e2c402923a0369484effcf9b372b.bindPopup(popup_05643b0a5969447fd09e843b847c43c0)
-        ;
-
-        
-    
-    
-            marker_a900e2c402923a0369484effcf9b372b.bindTooltip(
-                `<div>
-                     Ngày 3 - Mã Pí Lèng
-                 </div>`,
-                {"sticky": true}
-            );
-        
-    
-            var marker_6ff50589e695a4c3727dc18f21492a8d = L.marker(
-                [23.151, 105.418],
-                {}
-            ).addTo(map_00fa89b8ea0ef1d4683a8ec58018b667);
-        
-    
-            var icon_04bb9c606bb6230d952f887338890b91 = L.AwesomeMarkers.icon(
-                {"extraClasses": "fa-rotate-0", "icon": "info-sign", "iconColor": "white", "markerColor": "red", "prefix": "glyphicon"}
-            );
-            marker_6ff50589e695a4c3727dc18f21492a8d.setIcon(icon_04bb9c606bb6230d952f887338890b91);
-        
-    
-        var popup_9a1ff1db2da40cd0733aa12ffce907ee = L.popup({"maxWidth": "100%"});
-
-        
-            var html_aaf9205c44bf1fddd569a7110fd5cca5 = $(`<div id="html_aaf9205c44bf1fddd569a7110fd5cca5" style="width: 100.0%; height: 100.0%;">Ngày 3: Mèo Vạc</div>`)[0];
-            popup_9a1ff1db2da40cd0733aa12ffce907ee.setContent(html_aaf9205c44bf1fddd569a7110fd5cca5);
-        
-
-        marker_6ff50589e695a4c3727dc18f21492a8d.bindPopup(popup_9a1ff1db2da40cd0733aa12ffce907ee)
-        ;
-
-        
-    
-    
-            marker_6ff50589e695a4c3727dc18f21492a8d.bindTooltip(
-                `<div>
-                     Ngày 3 - Mèo Vạc
-                 </div>`,
-                {"sticky": true}
-            );
-        
-    
-            var marker_b6cdb1ce0dd5c33f961c483e8ffc420e = L.marker(
-                [22.853, 106.362],
-                {}
-            ).addTo(map_00fa89b8ea0ef1d4683a8ec58018b667);
-        
-    
-            var icon_56f8e31f134da6d3a2243c0b393a7f96 = L.AwesomeMarkers.icon(
-                {"extraClasses": "fa-rotate-0", "icon": "info-sign", "iconColor": "white", "markerColor": "red", "prefix": "glyphicon"}
-            );
-            marker_b6cdb1ce0dd5c33f961c483e8ffc420e.setIcon(icon_56f8e31f134da6d3a2243c0b393a7f96);
-        
-    
-        var popup_ab3ee2b723ced4d40a67476ba3641c82 = L.popup({"maxWidth": "100%"});
-
-        
-            var html_8e9074df6ecba03a5ec8a60d859f8ab2 = $(`<div id="html_8e9074df6ecba03a5ec8a60d859f8ab2" style="width: 100.0%; height: 100.0%;">Ngày 3: Hang Pác Bó</div>`)[0];
-            popup_ab3ee2b723ced4d40a67476ba3641c82.setContent(html_8e9074df6ecba03a5ec8a60d859f8ab2);
-        
-
-        marker_b6cdb1ce0dd5c33f961c483e8ffc420e.bindPopup(popup_ab3ee2b723ced4d40a67476ba3641c82)
-        ;
-
-        
-    
-    
-            marker_b6cdb1ce0dd5c33f961c483e8ffc420e.bindTooltip(
-                `<div>
-                     Ngày 3 - Hang Pác Bó
-                 </div>`,
-                {"sticky": true}
-            );
-        
-    
-            var marker_e348c236089a31ba0cb0e13b029b3e1f = L.marker(
-                [22.857, 106.364],
-                {}
-            ).addTo(map_00fa89b8ea0ef1d4683a8ec58018b667);
-        
-    
-            var icon_9f60a16fbf97257c1c68f645d7fd4a7c = L.AwesomeMarkers.icon(
-                {"extraClasses": "fa-rotate-0", "icon": "info-sign", "iconColor": "white", "markerColor": "red", "prefix": "glyphicon"}
-            );
-            marker_e348c236089a31ba0cb0e13b029b3e1f.setIcon(icon_9f60a16fbf97257c1c68f645d7fd4a7c);
-        
-    
-        var popup_dd8bca89c6252c15c47550ac39cbfe8b = L.popup({"maxWidth": "100%"});
-
-        
-            var html_8a4c708b5f3dc2e7ea2659e0d01a09a0 = $(`<div id="html_8a4c708b5f3dc2e7ea2659e0d01a09a0" style="width: 100.0%; height: 100.0%;">Ngày 3: Suối Lê Nin</div>`)[0];
-            popup_dd8bca89c6252c15c47550ac39cbfe8b.setContent(html_8a4c708b5f3dc2e7ea2659e0d01a09a0);
-        
-
-        marker_e348c236089a31ba0cb0e13b029b3e1f.bindPopup(popup_dd8bca89c6252c15c47550ac39cbfe8b)
-        ;
-
-        
-    
-    
-            marker_e348c236089a31ba0cb0e13b029b3e1f.bindTooltip(
-                `<div>
-                     Ngày 3 - Suối Lê Nin
-                 </div>`,
-                {"sticky": true}
-            );
-        
-    
-            var marker_a8c398e6fb64a4fd4c1f42da342ac330 = L.marker(
-                [22.858, 106.365],
-                {}
-            ).addTo(map_00fa89b8ea0ef1d4683a8ec58018b667);
-        
-    
-            var icon_09632435b3515d154479804dea135c97 = L.AwesomeMarkers.icon(
-                {"extraClasses": "fa-rotate-0", "icon": "info-sign", "iconColor": "white", "markerColor": "red", "prefix": "glyphicon"}
-            );
-            marker_a8c398e6fb64a4fd4c1f42da342ac330.setIcon(icon_09632435b3515d154479804dea135c97);
-        
-    
-        var popup_ea0ffba92e8ed6a0d30b84d459765aff = L.popup({"maxWidth": "100%"});
-
-        
-            var html_b22e2f8552fd5d7e9e7fbe7753edaa12 = $(`<div id="html_b22e2f8552fd5d7e9e7fbe7753edaa12" style="width: 100.0%; height: 100.0%;">Ngày 3: Núi Các Mác</div>`)[0];
-            popup_ea0ffba92e8ed6a0d30b84d459765aff.setContent(html_b22e2f8552fd5d7e9e7fbe7753edaa12);
-        
-
-        marker_a8c398e6fb64a4fd4c1f42da342ac330.bindPopup(popup_ea0ffba92e8ed6a0d30b84d459765aff)
-        ;
-
-        
-    
-    
-            marker_a8c398e6fb64a4fd4c1f42da342ac330.bindTooltip(
-                `<div>
-                     Ngày 3 - Núi Các Mác
-                 </div>`,
-                {"sticky": true}
-            );
-        
-    
-            var marker_af80d1c5bb69d6f2d81534bbc0696989 = L.marker(
-                [22.725, 106.411],
-                {}
-            ).addTo(map_00fa89b8ea0ef1d4683a8ec58018b667);
-        
-    
-            var icon_9b1d12b6b285c3a17fc7c9a29caa75e5 = L.AwesomeMarkers.icon(
-                {"extraClasses": "fa-rotate-0", "icon": "info-sign", "iconColor": "white", "markerColor": "red", "prefix": "glyphicon"}
-            );
-            marker_af80d1c5bb69d6f2d81534bbc0696989.setIcon(icon_9b1d12b6b285c3a17fc7c9a29caa75e5);
-        
-    
-        var popup_83a025639df7ebff7ed805e2c22110d6 = L.popup({"maxWidth": "100%"});
-
-        
-            var html_d49835fa06676030665ee30cfa5d6eb7 = $(`<div id="html_d49835fa06676030665ee30cfa5d6eb7" style="width: 100.0%; height: 100.0%;">Ngày 3: Mộ Kim Đồng</div>`)[0];
-            popup_83a025639df7ebff7ed805e2c22110d6.setContent(html_d49835fa06676030665ee30cfa5d6eb7);
-        
-
-        marker_af80d1c5bb69d6f2d81534bbc0696989.bindPopup(popup_83a025639df7ebff7ed805e2c22110d6)
-        ;
-
-        
-    
-    
-            marker_af80d1c5bb69d6f2d81534bbc0696989.bindTooltip(
-                `<div>
-                     Ngày 3 - Mộ Kim Đồng
-                 </div>`,
-                {"sticky": true}
-            );
-        
-    
-            var poly_line_5152d52f199473d417ff404b8535ef44 = L.polyline(
-                [[23.199, 105.305], [23.215, 105.247], [23.151, 105.418], [22.853, 106.362], [22.857, 106.364], [22.858, 106.365], [22.725, 106.411]],
-                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "red", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.7, "smoothFactor": 1.0, "stroke": true, "weight": 3}
-            ).addTo(map_00fa89b8ea0ef1d4683a8ec58018b667);
-        
-    
-            var marker_d68dbede05f418c3d2637ecd5baf3b39 = L.marker(
-                [22.856, 106.722],
-                {}
-            ).addTo(map_00fa89b8ea0ef1d4683a8ec58018b667);
-        
-    
-            var icon_95f8a7655291621a2378e72b9edfa031 = L.AwesomeMarkers.icon(
-                {"extraClasses": "fa-rotate-0", "icon": "info-sign", "iconColor": "white", "markerColor": "purple", "prefix": "glyphicon"}
-            );
-            marker_d68dbede05f418c3d2637ecd5baf3b39.setIcon(icon_95f8a7655291621a2378e72b9edfa031);
-        
-    
-        var popup_b6748e822c57ed4df9037de087ffb8dc = L.popup({"maxWidth": "100%"});
-
-        
-            var html_b409d09e2b2cecda1e22c372b3bec699 = $(`<div id="html_b409d09e2b2cecda1e22c372b3bec699" style="width: 100.0%; height: 100.0%;">Ngày 4: Thác Bản Dốc</div>`)[0];
-            popup_b6748e822c57ed4df9037de087ffb8dc.setContent(html_b409d09e2b2cecda1e22c372b3bec699);
-        
-
-        marker_d68dbede05f418c3d2637ecd5baf3b39.bindPopup(popup_b6748e822c57ed4df9037de087ffb8dc)
-        ;
-
-        
-    
-    
-            marker_d68dbede05f418c3d2637ecd5baf3b39.bindTooltip(
-                `<div>
-                     Ngày 4 - Thác Bản Dốc
-                 </div>`,
-                {"sticky": true}
-            );
-        
-    
-            var marker_2668d2c5fee6782f6ebc28bd1d31b79d = L.marker(
-                [21.888, 106.742],
-                {}
-            ).addTo(map_00fa89b8ea0ef1d4683a8ec58018b667);
-        
-    
-            var icon_93dc98db6956ca19e195a9221f2b5a67 = L.AwesomeMarkers.icon(
-                {"extraClasses": "fa-rotate-0", "icon": "info-sign", "iconColor": "white", "markerColor": "purple", "prefix": "glyphicon"}
-            );
-            marker_2668d2c5fee6782f6ebc28bd1d31b79d.setIcon(icon_93dc98db6956ca19e195a9221f2b5a67);
-        
-    
-        var popup_5c6a713e673b4f81f02822378bf332a1 = L.popup({"maxWidth": "100%"});
-
-        
-            var html_a87de77d53346a99be86e9b7f9f11eea = $(`<div id="html_a87de77d53346a99be86e9b7f9f11eea" style="width: 100.0%; height: 100.0%;">Ngày 4: Chợ Tân Thanh</div>`)[0];
-            popup_5c6a713e673b4f81f02822378bf332a1.setContent(html_a87de77d53346a99be86e9b7f9f11eea);
-        
-
-        marker_2668d2c5fee6782f6ebc28bd1d31b79d.bindPopup(popup_5c6a713e673b4f81f02822378bf332a1)
-        ;
-
-        
-    
-    
-            marker_2668d2c5fee6782f6ebc28bd1d31b79d.bindTooltip(
-                `<div>
-                     Ngày 4 - Chợ Tân Thanh
-                 </div>`,
-                {"sticky": true}
-            );
-        
-    
-            var poly_line_7ab9abe5891e43edeb5bbdcc33da6b43 = L.polyline(
-                [[22.856, 106.722], [21.888, 106.742]],
-                {"bubblingMouseEvents": true, "color": "purple", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "purple", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.7, "smoothFactor": 1.0, "stroke": true, "weight": 3}
-            ).addTo(map_00fa89b8ea0ef1d4683a8ec58018b667);
-        
-    
-            var marker_e5f0b1394600b4d1ba5fcf54d8d1cac0 = L.marker(
-                [21.854, 106.757],
-                {}
-            ).addTo(map_00fa89b8ea0ef1d4683a8ec58018b667);
-        
-    
-            var icon_f90485cec624d19a883f7db5066a4aaa = L.AwesomeMarkers.icon(
-                {"extraClasses": "fa-rotate-0", "icon": "info-sign", "iconColor": "white", "markerColor": "orange", "prefix": "glyphicon"}
-            );
-            marker_e5f0b1394600b4d1ba5fcf54d8d1cac0.setIcon(icon_f90485cec624d19a883f7db5066a4aaa);
-        
-    
-        var popup_09a8dc2c5d238fc067702730c24b747a = L.popup({"maxWidth": "100%"});
-
-        
-            var html_913b15c4492cfa9eb12384e753feced4 = $(`<div id="html_913b15c4492cfa9eb12384e753feced4" style="width: 100.0%; height: 100.0%;">Ngày 5: Động Tam Thanh</div>`)[0];
-            popup_09a8dc2c5d238fc067702730c24b747a.setContent(html_913b15c4492cfa9eb12384e753feced4);
-        
-
-        marker_e5f0b1394600b4d1ba5fcf54d8d1cac0.bindPopup(popup_09a8dc2c5d238fc067702730c24b747a)
-        ;
-
-        
-    
-    
-            marker_e5f0b1394600b4d1ba5fcf54d8d1cac0.bindTooltip(
-                `<div>
-                     Ngày 5 - Động Tam Thanh
-                 </div>`,
-                {"sticky": true}
-            );
-        
-    
-            var poly_line_a0b9084a432b56562593b1f9c9e15167 = L.polyline(
-                [[21.854, 106.757]],
-                {"bubblingMouseEvents": true, "color": "orange", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "orange", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.7, "smoothFactor": 1.0, "stroke": true, "weight": 3}
-            ).addTo(map_00fa89b8ea0ef1d4683a8ec58018b667);
-        
+// Nút xem toàn tuyến
+document.getElementById('fitBtn').onclick = () => map.fitBounds(bounds);
 </script>
+</body>
 </html>
